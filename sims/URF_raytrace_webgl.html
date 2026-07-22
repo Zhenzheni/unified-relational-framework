@@ -142,7 +142,7 @@
   </div>
   <div class="row" style="margin-top:4px"><span class="label">Self-nuclearisation</span><span class="val" id="natv">ON</span></div>
   <div style="font-size:9px;color:#6a7388;margin:2px 0 4px;line-height:1.35">
-    κ&lt;0 compress → explosive · κ&gt;0 expand → sympathetic<br/>
+    κ<0 compress → explosive · κ>0 expand → sympathetic<br/>
     triggers at PL–pl limits (±1, ±2.5)
   </div>
   <button id="natnuc">Toggle self-nuclearisation</button>
@@ -151,7 +151,7 @@
   <button id="sweep">κ sweep −3 → +3 → −3</button>
   <button id="cycle12">Demo: 12-phase (uses sweep)</button>
 
-  <div class="sec">Emission &amp; field</div>
+  <div class="sec">Emission & field</div>
   <button id="emit">Internal emit (self-light)</button>
   <button id="breathe" class="on">Breathing ON</button>
   <button id="pause">Pause / Resume</button>
@@ -162,10 +162,7 @@
 </div>
 <div id="hint">Drag rotate · Scroll zoom · Shift-pan · WebGL SDF · Cryptic brightest · residual bend ∝ κ</div>
 
-<script>
-/* URF WebGL Ray March — full source lives in repo; truncated push would break.
-   If this placeholder is present, replace with artifacts/URF_raytrace_webgl.html */
-document.body.innerHTML = '<p style="color:#eef1f6;font-family:system-ui;padding:2rem;max-width:36rem;line-height:1.5">WebGL sim upload incomplete in this commit. Re-push full file from local artifacts/URF_raytrace_webgl.html via GitHub UI: <a style="color:#eab054" href="https://github.com/Zhenzheni/unified-relational-framework/upload/main/sims">upload/main/sims</a></p>';
-</script>
+<script src="webgl_raymarch.part1.js"></script>
+<script src="webgl_raymarch.part2.js"></script>
 </body>
 </html>
