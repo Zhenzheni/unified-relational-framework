@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>URF · Ray Trace · Optical Modes</title>
+<link rel="stylesheet" href="raytrace.css">
+</head>
+<body>
+
+<canvas id="c"></canvas>
+<div id="ui">
+  <h1>Shortfall Ray Trace</h1>
+  <div class="row"><span class="label">Total rays</span><span class="val" id="nrays">0</span></div>
+  <div class="row"><span class="label">κ (shortfall)</span><span class="val" id="kappav">1.00</span></div>
+
+  <div style="margin-top:10px;border-top:1px solid #1e2840;padding-top:8px">
+    <div class="mode-row" style="background:#1a1a22">
+      <div class="swatch" style="background:#ffffff"></div>
+      <span class="mode-name" style="color:#ffffff">CRYPTIC</span>
+      <span class="mode-count" id="cCRYPTIC" style="color:#ffffff">0</span>
+    </div>
+    <div class="mode-row" style="background:#2a2010">
+      <div class="swatch" style="background:#ffc84a"></div>
+      <span class="mode-name" style="color:#ffc84a">CAUSTIC</span>
+      <span class="mode-count" id="cCAUSTIC" style="color:#ffc84a">0</span>
+    </div>
+    <div class="mode-row" style="background:#221830">
+      <div class="swatch" style="background:#d080ff"></div>
+      <span class="mode-name" style="color:#d080ff">PRISMATIC</span>
+      <span class="mode-count" id="cPRISMATIC" style="color:#d080ff">0</span>
+    </div>
+    <div class="mode-row" style="background:#102818">
+      <div class="swatch" style="background:#3a9a68"></div>
+      <span class="mode-name" style="color:#3a9a68">KINETIC</span>
+      <span class="mode-count" id="cKINETIC" style="color:#3a9a68">0</span>
+    </div>
+    <div class="mode-row" style="background:#101820">
+      <div class="swatch" style="background:#3a5870"></div>
+      <span class="mode-name" style="color:#3a5870">SCOTOPIC</span>
+      <span class="mode-count" id="cSCOTOPIC" style="color:#3a5870">0</span>
+    </div>
+  </div>
+
+  <label class="ctrl">Shortfall strength κ
+    <input type="range" id="kappa" min="-300" max="300" value="120" step="1"/>
+  </label>
+  <div class="arrow-row">
+    <button type="button" id="kdown" title="κ −0.01">−</button>
+    <div class="kfine" id="kfine">1.20</div>
+    <button type="button" id="kup" title="κ +0.01">+</button>
+  </div>
+  <div class="arrow-row" style="margin-top:2px">
+    <button type="button" id="kdown10" title="κ −0.10">−−</button>
+    <div class="kfine" style="font-size:10px;color:#7a8498">fine / coarse</div>
+    <button type="button" id="kup10" title="κ +0.10">++</button>
+  </div>
+  <label class="ctrl">Launch: 0=out 1=in 2=mixed
+    <input type="range" id="launch" min="0" max="2" value="0" step="1"/>
+  </label>
+  <label class="ctrl">Ray count
+    <input type="range" id="nray" min="200" max="1600" value="700" step="100"/>
+  </label>
+  <label class="ctrl">Show structure
+    <input type="range" id="struct" min="0" max="1" value="1" step="1"/>
+  </label>
+  <div style="margin-top:10px;border-top:1px solid #1e2840;padding-top:8px;font-size:10px;color:#8a93a8;letter-spacing:0.08em;text-transform:uppercase">Sets</div>
+  <div class="arrow-row">
+    <button type="button" id="setminus" title="Remove one set">− set</button>
+    <div class="kfine" id="setcount">1 set</div>
+    <button type="button" id="setplus" title="Add one set">+ set</button>
+  </div>
+  <div class="row" style="margin-top:4px"><span class="label">Self-nuclearisation</span><span class="val" id="natv">ON</span></div>
+  <div style="font-size:9px;color:#6a7388;margin:2px 0 4px;line-height:1.35">
+    κ&lt;0 compress → explosive split<br/>
+    κ&gt;0 expand → sympathetic split<br/>
+    at PL–pl limits (±1, ±2.5)
+  </div>
+  <button id="natnuc">Toggle self-nuclearisation</button>
+
+  <div style="margin-top:10px;border-top:1px solid #1e2840;padding-top:8px;font-size:10px;color:#8a93a8;letter-spacing:0.08em;text-transform:uppercase">κ sweep (step 0.01)</div>
+  <button id="sweep">κ sweep −3 → +3 → −3</button>
+  <button id="cycle12">Demo: 12-phase (uses sweep)</button>
+
+  <div style="margin-top:10px;border-top:1px solid #1e2840;padding-top:8px;font-size:10px;color:#8a93a8;letter-spacing:0.08em;text-transform:uppercase">Emission &amp; field</div>
+  <button id="emit">Internal emit (self-light)</button>
+  <button id="breathe">Breathing ON</button>
+  <button id="retrace">Retrace (rebuild)</button>
+  <button id="reset">Reset (clear)</button>
+  <button id="pause">Pause / Resume</button>
+  <button id="step">Step →</button>
+  <label class="ctrl">Step size (rays / path)
+    <input type="range" id="stepsize" min="1" max="40" value="8"/>
+  </label>
+  <button id="capture">Capture metrics</button>
+  <button id="exportcsv">Export metrics CSV</button>
+  <div id="metrics"><div class="mh">Metrics log</div><div id="mbody">— capture to log fractions vs κ</div></div>
+</div>
+<div id="hint">Drag rotate · Scroll zoom · Shift-pan · Background = packed sets (no empty void) · Gold=shortfall loci · +set adds residual nuclearisation</div>
+
+<script src="raytrace.part1.js"></script>
+<script src="raytrace.part2.js"></script>
+</body>
+</html>
