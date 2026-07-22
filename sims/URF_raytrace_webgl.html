@@ -6,23 +6,15 @@
 <title>URF · WebGL Ray March · Optical Modes</title>
 <style>
   :root {
-    --bg: #04040a;
-    --panel: rgba(6,8,18,0.94);
-    --line: #2a3555;
-    --ink: #e8ecf4;
-    --muted: #7a8498;
-    --accent: #9eb6ff;
-    --amber: #ffc84a;
-    --teal: #3f93ab;
+    --bg: #04040a; --panel: rgba(6,8,18,0.94); --line: #2a3555; --ink: #e8ecf4;
+    --muted: #7a8498; --accent: #9eb6ff; --amber: #ffc84a; --teal: #3f93ab;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--ink); font-family: system-ui, sans-serif; overflow: hidden; }
   canvas { display: block; width: 100vw; height: 100vh; }
   #ui {
-    position: absolute; top: 10px; left: 10px;
-    background: var(--panel); border: 1px solid var(--line);
-    border-radius: 10px; padding: 12px 14px; width: 292px;
-    max-height: 94vh; overflow-y: auto; font-size: 12px;
+    position: absolute; top: 10px; left: 10px; background: var(--panel); border: 1px solid var(--line);
+    border-radius: 10px; padding: 12px 14px; width: 292px; max-height: 94vh; overflow-y: auto; font-size: 12px;
     backdrop-filter: blur(8px);
   }
   h1 { font-size: 11px; color: var(--accent); letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 4px; }
@@ -33,42 +25,28 @@
   label.ctrl { display: block; color: #8a93a8; margin-top: 8px; font-size: 11px; }
   input[type=range] { width: 100%; margin: 2px 0; accent-color: var(--accent); }
   button {
-    margin-top: 6px; width: 100%; padding: 7px;
-    background: #1a2440; border: 1px solid #3a4a70; color: #c8d0e8;
-    border-radius: 6px; cursor: pointer; font-size: 11px;
+    margin-top: 6px; width: 100%; padding: 7px; background: #1a2440; border: 1px solid #3a4a70;
+    color: #c8d0e8; border-radius: 6px; cursor: pointer; font-size: 11px;
   }
   button:hover { background: #243056; }
   button.on { border-color: var(--amber); color: var(--amber); }
   .arrow-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
   .arrow-row button { width: 36px; margin-top: 0; padding: 6px 0; font-size: 14px; font-weight: 700; }
   .arrow-row .kfine { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: var(--ink); font-size: 13px; }
-  .mode-row {
-    display: flex; align-items: center; justify-content: space-between;
-    margin: 4px 0; padding: 4px 6px; border-radius: 6px;
-  }
+  .mode-row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0; padding: 4px 6px; border-radius: 6px; }
   .swatch { width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; flex-shrink: 0; }
   .mode-name { flex: 1; font-size: 11px; font-weight: 600; }
   .mode-count { font-variant-numeric: tabular-nums; font-size: 11px; }
   #metrics {
-    margin-top: 10px; border-top: 1px solid #1e2840; padding-top: 8px;
-    font-size: 10px; color: #8a93a8; max-height: 120px; overflow-y: auto;
-    font-family: ui-monospace, monospace; line-height: 1.45;
+    margin-top: 10px; border-top: 1px solid #1e2840; padding-top: 8px; font-size: 10px; color: #8a93a8;
+    max-height: 120px; overflow-y: auto; font-family: ui-monospace, monospace; line-height: 1.45;
   }
   #metrics .mh { color: var(--accent); font-weight: 600; margin-bottom: 4px; }
   #metrics .rowm { display: flex; justify-content: space-between; gap: 8px; }
   #metrics .pct { color: #c8d0e8; }
-  #hint {
-    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
-    font-size: 11px; color: #556070; pointer-events: none; white-space: nowrap;
-  }
-  #fps {
-    position: absolute; top: 10px; right: 14px;
-    font-size: 11px; color: #556070; font-family: ui-monospace, monospace;
-  }
-  .sec {
-    margin-top: 10px; border-top: 1px solid #1e2840; padding-top: 8px;
-    font-size: 10px; color: #8a93a8; letter-spacing: 0.08em; text-transform: uppercase;
-  }
+  #hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #556070; pointer-events: none; white-space: nowrap; }
+  #fps { position: absolute; top: 10px; right: 14px; font-size: 11px; color: #556070; font-family: ui-monospace, monospace; }
+  .sec { margin-top: 10px; border-top: 1px solid #1e2840; padding-top: 8px; font-size: 10px; color: #8a93a8; letter-spacing: 0.08em; text-transform: uppercase; }
 </style>
 </head>
 <body>
@@ -77,81 +55,31 @@
 <div id="ui">
   <h1>URF WebGL Ray March</h1>
   <div class="sub">SDF sphere-tracing · residual bend · optical modes<br/>GPU per-pixel · same κ / set / emit model</div>
-
   <div class="row"><span class="label">κ (shortfall)</span><span class="val" id="kappav">1.20</span></div>
   <div class="row"><span class="label">Sets active</span><span class="val" id="setcount">1</span></div>
   <div class="row"><span class="label">Spheres</span><span class="val" id="nspheres">60</span></div>
-
   <div style="margin-top:10px;border-top:1px solid #1e2840;padding-top:8px">
-    <div class="mode-row" style="background:#1a1a22">
-      <div class="swatch" style="background:#ffffff"></div>
-      <span class="mode-name" style="color:#ffffff">CRYPTIC</span>
-      <span class="mode-count" id="cCRYPTIC" style="color:#ffffff">—</span>
-    </div>
-    <div class="mode-row" style="background:#2a2010">
-      <div class="swatch" style="background:#ffc84a"></div>
-      <span class="mode-name" style="color:#ffc84a">CAUSTIC</span>
-      <span class="mode-count" id="cCAUSTIC" style="color:#ffc84a">—</span>
-    </div>
-    <div class="mode-row" style="background:#221830">
-      <div class="swatch" style="background:#d080ff"></div>
-      <span class="mode-name" style="color:#d080ff">PRISMATIC</span>
-      <span class="mode-count" id="cPRISMATIC" style="color:#d080ff">—</span>
-    </div>
-    <div class="mode-row" style="background:#102818">
-      <div class="swatch" style="background:#3a9a68"></div>
-      <span class="mode-name" style="color:#3a9a68">KINETIC</span>
-      <span class="mode-count" id="cKINETIC" style="color:#3a9a68">—</span>
-    </div>
-    <div class="mode-row" style="background:#101820">
-      <div class="swatch" style="background:#3a5870"></div>
-      <span class="mode-name" style="color:#3a5870">SCOTOPIC</span>
-      <span class="mode-count" id="cSCOTOPIC" style="color:#3a5870">—</span>
-    </div>
+    <div class="mode-row" style="background:#1a1a22"><div class="swatch" style="background:#ffffff"></div><span class="mode-name" style="color:#ffffff">CRYPTIC</span><span class="mode-count" id="cCRYPTIC" style="color:#ffffff">—</span></div>
+    <div class="mode-row" style="background:#2a2010"><div class="swatch" style="background:#ffc84a"></div><span class="mode-name" style="color:#ffc84a">CAUSTIC</span><span class="mode-count" id="cCAUSTIC" style="color:#ffc84a">—</span></div>
+    <div class="mode-row" style="background:#221830"><div class="swatch" style="background:#d080ff"></div><span class="mode-name" style="color:#d080ff">PRISMATIC</span><span class="mode-count" id="cPRISMATIC" style="color:#d080ff">—</span></div>
+    <div class="mode-row" style="background:#102818"><div class="swatch" style="background:#3a9a68"></div><span class="mode-name" style="color:#3a9a68">KINETIC</span><span class="mode-count" id="cKINETIC" style="color:#3a9a68">—</span></div>
+    <div class="mode-row" style="background:#101820"><div class="swatch" style="background:#3a5870"></div><span class="mode-name" style="color:#3a5870">SCOTOPIC</span><span class="mode-count" id="cSCOTOPIC" style="color:#3a5870">—</span></div>
   </div>
-
-  <label class="ctrl">Shortfall strength κ
-    <input type="range" id="kappa" min="-300" max="300" value="120" step="1"/>
-  </label>
-  <div class="arrow-row">
-    <button type="button" id="kdown" title="κ −0.01">−</button>
-    <div class="kfine" id="kfine">1.20</div>
-    <button type="button" id="kup" title="κ +0.01">+</button>
-  </div>
-  <div class="arrow-row" style="margin-top:2px">
-    <button type="button" id="kdown10" title="κ −0.10">−−</button>
-    <div class="kfine" style="font-size:10px;color:#7a8498">fine / coarse</div>
-    <button type="button" id="kup10" title="κ +0.10">++</button>
-  </div>
-
-  <label class="ctrl">Quality (march steps)
-    <input type="range" id="quality" min="24" max="96" value="56" step="8"/>
-  </label>
-  <label class="ctrl">Show structure
-    <input type="range" id="struct" min="0" max="1" value="1" step="1"/>
-  </label>
-  <label class="ctrl">Packed background density
-    <input type="range" id="packdens" min="1" max="15" value="9" step="1"/>
-  </label>
-
+  <label class="ctrl">Shortfall strength κ<input type="range" id="kappa" min="-300" max="300" value="120" step="1"/></label>
+  <div class="arrow-row"><button type="button" id="kdown">−</button><div class="kfine" id="kfine">1.20</div><button type="button" id="kup">+</button></div>
+  <div class="arrow-row" style="margin-top:2px"><button type="button" id="kdown10">−−</button><div class="kfine" style="font-size:10px;color:#7a8498">fine / coarse</div><button type="button" id="kup10">++</button></div>
+  <label class="ctrl">Quality (march steps)<input type="range" id="quality" min="24" max="96" value="56" step="8"/></label>
+  <label class="ctrl">Show structure<input type="range" id="struct" min="0" max="1" value="1" step="1"/></label>
+  <label class="ctrl">Packed background density<input type="range" id="packdens" min="1" max="15" value="9" step="1"/></label>
   <div class="sec">Sets</div>
-  <div class="arrow-row">
-    <button type="button" id="setminus">− set</button>
-    <div class="kfine" id="setlab">1 set</div>
-    <button type="button" id="setplus">+ set</button>
-  </div>
+  <div class="arrow-row"><button type="button" id="setminus">− set</button><div class="kfine" id="setlab">1 set</div><button type="button" id="setplus">+ set</button></div>
   <div class="row" style="margin-top:4px"><span class="label">Self-nuclearisation</span><span class="val" id="natv">ON</span></div>
-  <div style="font-size:9px;color:#6a7388;margin:2px 0 4px;line-height:1.35">
-    κ<0 compress → explosive · κ>0 expand → sympathetic<br/>
-    triggers at PL–pl limits (±1, ±2.5)
-  </div>
+  <div style="font-size:9px;color:#6a7388;margin:2px 0 4px;line-height:1.35">κ&lt;0 compress → explosive · κ&gt;0 expand → sympathetic<br/>triggers at PL–pl limits (±1, ±2.5)</div>
   <button id="natnuc">Toggle self-nuclearisation</button>
-
   <div class="sec">κ sweep</div>
   <button id="sweep">κ sweep −3 → +3 → −3</button>
   <button id="cycle12">Demo: 12-phase (uses sweep)</button>
-
-  <div class="sec">Emission & field</div>
+  <div class="sec">Emission &amp; field</div>
   <button id="emit">Internal emit (self-light)</button>
   <button id="breathe" class="on">Breathing ON</button>
   <button id="pause">Pause / Resume</button>
@@ -161,8 +89,6 @@
   <div id="metrics"><div class="mh">Metrics log</div><div id="mbody">— sample screen modes vs κ</div></div>
 </div>
 <div id="hint">Drag rotate · Scroll zoom · Shift-pan · WebGL SDF · Cryptic brightest · residual bend ∝ κ</div>
-
-<script src="webgl_raymarch.part1.js"></script>
-<script src="webgl_raymarch.part2.js"></script>
+<script src="webgl_loader.js"></script>
 </body>
 </html>
