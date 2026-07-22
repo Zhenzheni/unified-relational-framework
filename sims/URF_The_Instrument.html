@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>URF — The Instrument</title>
+<link rel="stylesheet" href="instrument.css">
+</head>
+<body>
+
+<div class="stage">
+  <div class="topbar">
+    <div class="title">Unified Relational Framework <span>// The Instrument</span></div>
+    <div class="abstract">Derived from one retained assumption: the three generating circles of the Reuleaux triangle are never released. Move s, d, κ below and watch shortfall propagate through stress, membrane, cycle, and helix.</div>
+  </div>
+  <div class="composition">
+    <div class="quad nw">
+      <div class="eyebrow">§4 · Residual Stress Dipole</div>
+      <div class="big" id="out-sigma">—</div>
+      <div class="capt" id="out-dipole">—</div>
+      <div class="rows">
+        <div class="row"><span class="k">Y</span><span id="out-Y">—</span></div>
+        <div class="row"><span class="k">K</span><span id="out-K">—</span></div>
+        <div class="row"><span class="k">G</span><span id="out-G">—</span></div>
+        <div class="divider"></div>
+        <div class="row"><span class="k">refractive</span><span id="out-refr">—</span></div>
+      </div>
+    </div>
+    <div class="quad ne">
+      <div class="eyebrow">§2/3 · Force Angle &amp; Shortfall</div>
+      <div class="big amber" id="out-theta">—</div>
+      <div class="capt" id="out-dtheta">—</div>
+      <div class="rows">
+        <div class="row"><span class="k">Δθ_c (d=s)</span><span class="mono" style="color:var(--crit)">60.00° · π/3</span></div>
+        <div class="row"><span class="k">Δθ/Δθ_c</span><span id="out-ratio">—</span></div>
+      </div>
+      <canvas id="spark" class="spark" width="240" height="64"></canvas>
+    </div>
+    <div class="instrument-col">
+      <svg id="instrument" viewBox="0 0 700 700"></svg>
+      <div class="status-strip">
+        <span><span class="dot" id="dot-mode"></span>mode <b id="s-mode">—</b></span>
+        <span>regime <b id="s-regime">—</b></span>
+        <span><span class="dot" id="dot-path"></span><b id="s-path">—</b></span>
+      </div>
+    </div>
+    <div class="quad sw">
+      <div class="eyebrow">§3 · Pressure Length &amp; Membrane</div>
+      <div class="big teal" id="out-lsig">—</div>
+      <div class="capt">ε_c = 1/√10 = 0.3162</div>
+      <div class="rows">
+        <div class="row"><span class="k">r_inner</span><span id="out-rin">—</span></div>
+        <div class="row"><span class="k">r_outer</span><span id="out-rout">—</span></div>
+        <div class="row"><span class="k">Δr_m</span><span id="out-drm">—</span></div>
+      </div>
+    </div>
+    <div class="quad se">
+      <div class="eyebrow">§5/9 · Scale &amp; Helix</div>
+      <div class="big" id="out-mc2">—</div>
+      <div class="capt" id="out-abssigma">—</div>
+      <div class="rows">
+        <div class="row"><span class="k">θ_BC</span><span id="out-thetaBC">—</span></div>
+        <div class="row"><span class="k">H</span><span id="out-H">—</span></div>
+        <div class="row"><span class="k">R</span><span id="out-R">—</span></div>
+        <div class="divider"></div>
+        <div class="row"><span class="k">stack</span><span id="out-stack">—</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="rail">
+    <div class="ctrl"><label>s (fm) <span class="val" id="v-s"></span></label><input type="range" id="s" min="0.3" max="1.5" step="0.001" value="0.84"></div>
+    <div class="ctrl"><label>d (fm) <span class="val" id="v-d"></span></label><input type="range" id="d" min="0" max="1" step="0.001" value="0.42"></div>
+    <div class="ctrl"><label>κ <span class="val" id="v-k"></span></label><input type="range" id="k" min="-2" max="2" step="0.01" value="1"></div>
+    <div class="ctrl"><label>C <span class="val" id="v-c"></span></label><input type="range" id="c" min="0.1" max="3" step="0.01" value="1"></div>
+    <div class="ctrl"><label>N_c contacts <span class="val" id="v-nc"></span></label><input type="range" id="nc" min="0" max="6" step="1" value="3"></div>
+    <div class="ctrl"><label>BC stack /30 <span class="val" id="v-stack"></span></label><input type="range" id="stack" min="1" max="30" step="1" value="9"></div>
+    <div class="ctrl"><label>cycle phase <span class="val" id="v-p"></span></label><input type="range" id="phase" min="0" max="359" step="1" value="40"></div>
+    <button class="playbtn" id="playbtn">▶ animate cycle</button>
+  </div>
+  <div class="footline">Chris Peterson · Unified Relational Framework — geometric derivation from the Reuleaux triangle. Simulator built from the paper's equations; illustrative renderings noted where the geometry is abstracted.</div>
+</div>
+
+<script src="instrument.js"></script>
+</body>
+</html>
