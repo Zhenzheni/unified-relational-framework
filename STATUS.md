@@ -1,25 +1,24 @@
-# URF session status (handoff)
+# Repo status (2026-07-23)
 
-## Locked notation
-- Force Angle (not Fork Angle): θ(d) = 2π/3 − 2 arcsin(d/(2s))
-- Angular Shortfall Δθ > 0; critical π/3 at d = s
-- Pressure length ℓ = s/√10 (no σ subscript)
-- Residual stress σ_res = κ·Δθ separate from ℓ
-- Primary comparison: Pℓ ↔ ℓP
-- s ≈ 0.84 fm scale choice for hadronic mass
+## Cleaned
 
-## Sims state
-- Background = packed sets (15-cell lattice), not empty void
-- Self-nuclearisation: κ<0 explosive, κ>0 sympathetic at ±1, ±2.5
-- Multi-foci isotropic emission; tetrahedral-symmetric breathing
-- κ sweep −3 → +3 → −3 step 0.01
+- Removed broken WebGL shell, loader, and incomplete b64 chunks
+- Removed modular raytrace HTML that depended on missing `raytrace.part*.js`
+- Removed obsolete `UPLOAD_*.md` notes
+- Pages landing: Instrument + Ray Trace only
+- Ray Trace on Pages is served from `URF_raytrace_shortfall (7).html` under a clean name
 
-## Open
-- Kinetic residual curvature (mild P/p bend, not pure linear)
-- Newtonian limit from residual pressure gradients (motivated)
-- Full GR match (light bending, EP, metric)
+## Live
 
-## Files of record
-- paper/URF_Paper_Skeleton.tex
-- sims/URF_raytrace_shortfall.html
-- sims/URF_The_Instrument.html
+- `sims/URF_The_Instrument.html` + css/js
+- `sims/URF_raytrace_shortfall (7).html` (full Canvas sim)
+- `paper/` LaTeX skeleton + section files
+
+## Local only (project artifacts)
+
+- Full WebGL SDF ray-march (`URF_raytrace_webgl.html`)
+- Latest paper draft when sandbox write is available
+
+## Naming note
+
+Residual stress (origin: Angular Shortfall) is presented as **radial stress** on the Pressure Shell.
