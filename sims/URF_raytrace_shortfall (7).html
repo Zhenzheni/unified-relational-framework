@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>URF · Ray Trace v2 · Optical Modes</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #04040a; color: #d0d4e0; font-family: system-ui, sans-serif; overflow: hidden; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #ui {
+    position: absolute; top: 10px; left: 10px;
+    background: rgba(6,8,18,0.94); border: 1px solid #2a3555;
+    border-radius: 10px; padding: 12px 14px; width: 280px;
+    max-height: 94vh; overflow-y: auto; font-size: 12px;
+  }
+  h1 { font-size: 11px; color: #9eb6ff; letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 8px; }
+  .row { display: flex; justify-content: space-between; margin: 3px 0; }
+  .label { color: #7a8498; }
+  .val { font-variant-numeric: tabular-nums; color: #e8ecf4; font-weight: 500; }
+  label.ctrl { display: block; color: #8a93a8; margin-top: 8px; font-size: 11px; }
+  input[type=range] { width: 100%; margin: 2px 0 2px; }
+  button {
+    margin-top: 6px; width: 100%; padding: 7px;
+    background: #1a2440; border: 1px solid #3a4a70; color: #c8d0e8;
+    border-radius: 6px; cursor: pointer; font-size: 11px;
+  }
+  button:hover { background: #243056; }
+  .arrow-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+  .arrow-row button { width: 36px; margin-top: 0; padding: 6px 0; font-size: 14px; font-weight: 700; }
+  .arrow-row .kfine { flex: 1; text-align: center; font-variant-numeric: tabular-nums; color: #e8ecf4; font-size: 13px; }
+  #metrics {
+    margin-top: 10px; border-top: 1px solid #1e2840; padding-top: 8px;
+    font-size: 10px; color: #8a93a8; max-height: 140px; overflow-y: auto;
+    font-family: ui-monospace, monospace; line-height: 1.45;
+  }
+  #metrics .mh { color: #9eb6ff; font-weight: 600; margin-bottom: 4px; }
+  #metrics .rowm { display: flex; justify-content: space-between; gap: 8px; }
+  #metrics .pct { color: #c8d0e8; }
+
+  .mode-row {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 4px 0; padding: 4px 6px; border-radius: 6px;
+  }
+  .swatch { width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; flex-shrink: 0; }
+  .mode-name { flex: 1; font-size: 11px; font-weight: 600; }
+  .mode-count { font-variant-numeric: tabular-nums; font-size: 11px; }
+  #hint { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    font-size: 11px; color: #556070; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ui">
+  <h1>Shortfall Ray Trace</h1>
+  <div class="row"><span class="label">Total rays</span><span class="val" id="nrays">0</span></div>
+  <div class="row"><span class="label">κ (shortfall)</span><span class="val" id="kappav">1.00</span></div>
+
+  <div style="margin-top:10px;border-top:1px solid #1e2840;padding-top:8px">
+    <div class="mode-row" style="background:#1a1a22">
+      <div class="swatch" style="background:#ffffff"></div>
+      <span class="mode-name" style="color:#ffffff">CRYPTIC</span>
+      <span class="mode-count" id="cCRYPTIC" style="color:#ffffff">0</span>
+    </div>
+    <div class="mode-row" style="background:#2a2010">
+      <div class="swatch" style="background:#ffc84a"></div>
+      <span class="mode-name" style="color:#ffc84a">CAUSTIC</span>
+      <span class="mode-count" id="cCAUSTIC" style="color:#ffc84a">0</span>
+    </div>
+    <div class="mode-row" style="background:#221830">
+      <div class="swatch" style="background:#d080ff"></div>
+      <span class="mode-name" style="color:#d080ff">PRISMATIC</span>
+      <span class="mode-count" id="cPRISMATIC" style="color:#d080ff">0</span>
+    </div>
+    <div class="mode-row" style="background:#102818">
+      <div class="swatch" style="background:#3a9a68"></div>
+      <span class="mode-name" style="color:#3a9a68">KINETIC</span>
+      <span class="mode-count" id="cKINETIC" style="color:#3a9a68">0</span>
+    </div>
+    <div class="mode-row" style="background:#101820">
+      <div class="swatch" style="background:#3a5870"></div>
+      <span class="mode-name" style="color:#3a5870">SCOTOPIC</span>
+      <span class="mode-count" id="cSCOTOPIC" style="color:#3a5870">0</span>
+    </div>
+  </div>
+
+  <label class="ctrl">Shortfall strength κ
+    <input type="range" id="kappa" min="-300" max="300" value="120" step="1"/>
+  </label>
+  <div class="arrow-row">
+    <button type="button" id="kdown" title="κ −0.01">−</button>
+    <div class="kfine" id="kfine">1.20</div>
+    <button type="button" id="kup" title="κ +0.01">+</button>
+  </div>
+  <div class="arrow-row" style="margin-top:2px">
+    <button type="button" id="kdown10" title="κ −0.10">−−</button>
+    <div class="kfine" style="font-size:10px;color:#7a8498">fine / coarse</div>
+    <button type="button" id="kup10" title="κ +0.10">++</button>
+  </div>
+
+  <label class="ctrl">Launch: 0=out 1=in 2=mixed
+    <input type="range" id="launch" min="0" max="2" value="0" step="1"/>
+  </label>
+  <label class="ctrl">Ray count
+    <input type="range" id="nray" min="200" max="1600" value="700" step="100"/>
+  </label>
+  <label class="ctrl">Show structure
+    <input type="range" id="struct" min="0" max="1" value="1" step="1"/>
+  </label>
+  <div style="margin-top:10px;border-top:1px solid #1e2840;padding-top:8px;font-size:10px;color:#8a93a8;letter-spacing:0.08em;text-transform:uppercase">Sets</div>
+  <div class="arrow-row">
+    <button type="button" id="setminus" title="Remove one set">− set</button>
+    <div class="kfine" id="setcount">1 set</div>
+    <button type="button" id="setplus" title="Add one set">+ set</button>
+  </div>
+  <div class="row" style="margin-top:4px"><span class="label">Self-nuclearisation</span><span class="val" id="natv">ON</span></div>
+  <div style="font-size:9px;color:#6a7388;margin:2px 0 4px;line-height:1.35">
+    κ&lt;0 compress → explosive split<br/>
+    κ&gt;0 expand → sympathetic split<br/>
+    at PL–pl limits (±1, ±2.5)
+  </div>
+  <button id="natnuc">Toggle self-nuclearisation</button>
+
+  <div style="margin-top:10px;border-top:1px solid #1e2840;padding-top:8px;font-size:10px;color:#8a93a8;letter-spacing:0.08em;text-transform:uppercase">κ sweep (step 0.01)</div>
+  <button id="sweep">κ sweep −3 → +3 → −3</button>
+  <button id="cycle12">Demo: 12-phase (uses sweep)</button>
+
+  <div style="margin-top:10px;border-top:1px solid #1e2840;padding-top:8px;font-size:10px;color:#8a93a8;letter-spacing:0.08em;text-transform:uppercase">Emission &amp; field</div>
+  <button id="emit">Internal emit (self-light)</button>
+  <button id="breathe">Breathing ON</button>
+  <button id="retrace">Retrace (rebuild)</button>
+  <button id="reset">Reset (clear)</button>
+  <button id="pause">Pause / Resume</button>
+  <button id="step">Step →</button>
+  <label class="ctrl">Step size (rays / path)
+    <input type="range" id="stepsize" min="1" max="40" value="8"/>
+  </label>
+  <button id="capture">Capture metrics</button>
+  <button id="exportcsv">Export metrics CSV</button>
+  <div id="metrics"><div class="mh">Metrics log</div><div id="mbody">— capture to log fractions vs κ</div></div>
+</div>
+<div id="hint">Drag rotate · Scroll zoom · Shift-pan · Background = packed sets (no empty void) · Gold=shortfall loci · +set adds residual nuclearisation</div>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+let W, H, dpr;
+function resize() {
+  dpr = devicePixelRatio || 1;
+  W = innerWidth; H = innerHeight;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+addEventListener('resize', resize);
+resize();
+
+let rotY = 0.55, rotX = 0.28, zoom = 0.85, panX = 0, panY = 0;
+let dragging = false, panning = false, lx = 0, ly = 0;
+let paused = false;
+let kappaScale = 1.2;
+// kfine synced in setKappa when DOM ready
+let launchMode = 0;
+let showStruct = true;
+let NRAYS = 700;
+
+canvas.addEventListener('pointerdown', e => {
+  lx = e.clientX; ly = e.clientY;
+  if (e.shiftKey || e.button === 1 || e.altKey) { panning = true; dragging = false; }
+  else { dragging = true; panning = false; }
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointerup', () => { dragging = false; panning = false; });
+canvas.addEventListener('pointermove', e => {
+  const dx = e.clientX - lx, dy = e.clientY - ly;
+  if (panning) { panX += dx; panY += dy; }
+  else if (dragging) {
+    rotY += dx * 0.008; rotX += dy * 0.008;
+    rotX = Math.max(-1.4, Math.min(1.4, rotX));
+  }
+  lx = e.clientX; ly = e.clientY;
+});
+canvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  zoom *= e.deltaY > 0 ? 0.9 : 1.12;
+  zoom = Math.max(0.35, Math.min(30, zoom));
+}, { passive: false });
+
+function setKappa(k, retrace = true) {
+  kappaScale = Math.max(-3.0, Math.min(3.0, k));
+  document.getElementById('kappa').value = Math.round(kappaScale * 100);
+  document.getElementById('kappav').textContent = kappaScale.toFixed(2);
+  document.getElementById('kfine').textContent = kappaScale.toFixed(2);
+  if (retrace && typeof traceAll === 'function') {
+    // defer until traceAll defined on first load
+    try { traceAll(); } catch (e) {}
+  }
+}
+document.getElementById('kappa').oninput = e => {
+  setKappa((+e.target.value) / 100, true);
+};
+document.getElementById('kdown').onclick = () => setKappa(kappaScale - 0.01);
+document.getElementById('kup').onclick = () => setKappa(kappaScale + 0.01);
+document.getElementById('kdown10').onclick = () => setKappa(kappaScale - 0.10);
+document.getElementById('kup10').onclick = () => setKappa(kappaScale + 0.10);
+
+const metricsLog = [];
+function captureMetrics(tag) {
+  const total = Math.max(1, rays.length);
+  const row = {
+    tag: tag || ('κ=' + kappaScale.toFixed(3)),
+    kappa: +kappaScale.toFixed(4),
+    N: rays.length,
+    CAUSTIC: COUNTS.CAUSTIC,
+    PRISMATIC: COUNTS.PRISMATIC,
+    KINETIC: COUNTS.KINETIC,
+    SCOTOPIC: COUNTS.SCOTOPIC,
+    CRYPTIC: COUNTS.CRYPTIC,
+    fC: +(COUNTS.CAUSTIC / total).toFixed(4),
+    fP: +(COUNTS.PRISMATIC / total).toFixed(4),
+    fK: +(COUNTS.KINETIC / total).toFixed(4),
+    fS: +(COUNTS.SCOTOPIC / total).toFixed(4),
+    fX: +(COUNTS.CRYPTIC / total).toFixed(4)
+  };
+  metricsLog.push(row);
+  const el = document.getElementById('mbody');
+  const lines = metricsLog.slice(-12).map(r =>
+    `<div class="rowm"><span>${r.tag}</span><span class="pct">X${(r.fX*100).toFixed(1)}% C${(r.fC*100).toFixed(1)}% P${(r.fP*100).toFixed(1)}% K${(r.fK*100).toFixed(1)}% S${(r.fS*100).toFixed(1)}%</span></div>`
+  );
+  el.innerHTML = lines.join('') || '—';
+  return row;
+}
+document.getElementById('capture').onclick = () => {
+  // ensure counts reflect full field
+  if (typeof rays !== 'undefined' && rays.length) {
+    // recount from completed rays
+    for (const k of Object.keys(COUNTS)) COUNTS[k] = 0;
+    for (const r of rays) if (r.revealed || (r.reveal || 0) >= 1) COUNTS[r.mode]++;
+    // if nothing revealed yet, count all
+    const sum = Object.values(COUNTS).reduce((a,b)=>a+b,0);
+    if (sum === 0) for (const r of rays) COUNTS[r.mode]++;
+    for (const k of Object.keys(COUNTS)) {
+      const el = document.getElementById('c' + k);
+      if (el) el.textContent = COUNTS[k];
+    }
+  }
+  captureMetrics();
+};
+document.getElementById('exportcsv').onclick = () => {
+  if (!metricsLog.length) captureMetrics();
+  const hdr = 'kappa,N,CAUSTIC,PRISMATIC,KINETIC,SCOTOPIC,CRYPTIC,fC,fP,fK,fS,fX\n';
+  const body = metricsLog.map(r =>
+    [r.kappa,r.N,r.CAUSTIC,r.PRISMATIC,r.KINETIC,r.SCOTOPIC,r.CRYPTIC,r.fC,r.fP,r.fK,r.fS,r.fX].join(',')
+  ).join('\n');
+  const blob = new Blob([hdr + body], { type: 'text/csv' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'urf_raytrace_metrics.csv';
+  a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+// Internal emission: structure generates its own residual rays from heart + shell
+let emitMode = false;
+document.getElementById('emit').onclick = () => {
+  emitMode = !emitMode;
+  document.getElementById('emit').textContent = emitMode
+    ? 'Internal emit ON'
+    : 'Internal emit (self-light)';
+  launchMode = emitMode ? 0 : launchMode; // centroid out when emitting
+  if (emitMode) {
+    // force internal launch
+    const prev = launchMode;
+    launchMode = 0;
+    if (typeof traceAll === 'function') traceAll();
+  } else {
+    if (typeof traceAll === 'function') traceAll();
+  }
+};
+
+// ----- Sets: add one at a time (manual) + natural nucleation at PL–pl limits -----
+function updateSetLabel() {
+  const bg = PACKED.length;
+  const extra = splitLevel;
+  const el = document.getElementById('setcount');
+  if (el) el.textContent = bg + ' packed + ' + extra + ' extra';
+}
+
+function addOneSet() {
+  if (splitLevel >= 8) return; // soft cap for performance
+  if (splitLevel === 0) {
+    BASE_SECOND = makeShiftedSet(BASE, SHELL_AXIS, 1.15);
+    splitLevel = 1;
+  } else if (splitLevel === 1) {
+    const ax = SHELL_AXIS;
+    let px = BASE[1][0]-BASE[0][0], py = BASE[1][1]-BASE[0][1], pz = BASE[1][2]-BASE[0][2];
+    const par = px*ax[0]+py*ax[1]+pz*ax[2];
+    px -= par*ax[0]; py -= par*ax[1]; pz -= par*ax[2];
+    let L = Math.hypot(px,py,pz) || 1;
+    const axis2 = [px/L, py/L, pz/L];
+    BASE_THIRD = makeShiftedSet(BASE_SECOND || BASE, axis2, 1.15);
+    splitLevel = 2;
+  } else {
+    // further sets: alternate residual directions
+    const seed = (splitLevel % 2 === 0) ? (BASE_THIRD || BASE_SECOND || BASE) : (BASE_SECOND || BASE);
+    const ang = splitLevel * 2.399; // golden-ish angle
+    const axis = [
+      Math.cos(ang)*SHELL_AXIS[0] + Math.sin(ang)*0.7,
+      SHELL_AXIS[1]*0.3 + Math.cos(ang*1.3)*0.7,
+      Math.sin(ang)*SHELL_AXIS[2] + Math.cos(ang)*0.5
+    ];
+    const L = Math.hypot(axis[0], axis[1], axis[2]) || 1;
+    const a = [axis[0]/L, axis[1]/L, axis[2]/L];
+    const extra = makeShiftedSet(seed, a, 1.15 + 0.05*splitLevel);
+    if (splitLevel === 2) BASE_THIRD = BASE_THIRD; // keep
+    // store extras by growing BASE_THIRD list via concat into a dynamic store
+    if (!window._extraSets) window._extraSets = [];
+    window._extraSets.push(extra);
+    splitLevel += 1;
+  }
+  updateSetLabel();
+  if (typeof traceAll === 'function') traceAll();
+}
+
+function removeOneSet() {
+  if (splitLevel <= 0) return;
+  if (window._extraSets && window._extraSets.length) {
+    window._extraSets.pop();
+    splitLevel -= 1;
+  } else if (splitLevel >= 2) {
+    BASE_THIRD = null;
+    splitLevel = 1;
+  } else {
+    BASE_SECOND = null;
+    BASE_THIRD = null;
+    splitLevel = 0;
+  }
+  updateSetLabel();
+  if (typeof traceAll === 'function') traceAll();
+}
+
+function makeShiftedSet(source, axis, shift) {
+  let best = -1e9, idx = 0;
+  for (let i = 0; i < source.length; i++) {
+    const c = source[i];
+    const proj = c[0]*axis[0] + c[1]*axis[1] + c[2]*axis[2];
+    if (proj > best) { best = proj; idx = i; }
+  }
+  const peel = source[idx];
+  return source.map(c => [
+    c[0] - peel[0] + axis[0]*shift + peel[0]*0.15,
+    c[1] - peel[1] + axis[1]*shift + peel[1]*0.15,
+    c[2] - peel[2] + axis[2]*shift + peel[2]*0.15
+  ]);
+}
+
+
+let naturalNucleation = true;
+// Self-nuclearisation triggers (geometry-native):
+// 1) COMPRESSION → explosive separation (pressure side p, κ < 0)
+//    Deep compression at PL–pl lower limit: residual pressure saturates the shell,
+//    interface charge ruptures → new set is ejected outward (energetic / caustic channel).
+// 2) EXPANSION → sympathetic separation (tension side P, κ > 0)
+//    Deep expansion at PL–pl upper limit: residual tension opens solvent corridors,
+//    a new set peels along a transport axis (sympathetic channel).
+//
+// PL–pl = balanced pressure–length crossings where residual load can reorganise
+// into an extra extended nucleus without forced thresholds beyond the residual cycle.
+const NUC_COMPRESS = -1.0;  // first compression balance (explosive window)
+const NUC_COMPRESS_DEEP = -2.5;
+const NUC_EXPAND = 1.0;     // first expansion balance (sympathetic window)
+const NUC_EXPAND_DEEP = 2.5;
+
+function maybeNaturalNucleate(prevK, nextK) {
+  if (!naturalNucleation) return;
+  if (splitLevel >= 8) return;
+
+  function crossed(L) {
+    return (prevK - L) * (nextK - L) <= 0 && prevK !== nextK;
+  }
+
+  let mode = null;
+  if (crossed(NUC_COMPRESS) || crossed(NUC_COMPRESS_DEEP)) {
+    mode = 'explosive'; // compression → energetic rupture
+  } else if (crossed(NUC_EXPAND) || crossed(NUC_EXPAND_DEEP)) {
+    mode = 'sympathetic'; // expansion → solvent-corridor peel
+  }
+  if (!mode) return;
+
+  // Explosive: shift farther, along strongest compression radial
+  // Sympathetic: milder shift along residual transport axis
+  const shift = mode === 'explosive' ? 1.35 : 1.10;
+  const prevLevel = splitLevel;
+
+  if (mode === 'explosive') {
+    residualSign = -1;
+    // push next set along current shell axis (pressure ejection)
+    if (splitLevel === 0) {
+      BASE_SECOND = makeShiftedSet(BASE, SHELL_AXIS, shift);
+      splitLevel = 1;
+    } else {
+      addOneSet();
+    }
+  } else {
+    residualSign = 1;
+    // sympathetic: peel along a perpendicular residual corridor
+    if (splitLevel === 0) {
+      const ax = SHELL_AXIS;
+      let px = BASE[1][0]-BASE[0][0], py = BASE[1][1]-BASE[0][1], pz = BASE[1][2]-BASE[0][2];
+      const par = px*ax[0]+py*ax[1]+pz*ax[2];
+      px -= par*ax[0]; py -= par*ax[1]; pz -= par*ax[2];
+      let L = Math.hypot(px,py,pz) || 1;
+      BASE_SECOND = makeShiftedSet(BASE, [px/L, py/L, pz/L], shift);
+      splitLevel = 1;
+    } else {
+      addOneSet();
+    }
+  }
+
+  if (splitLevel > prevLevel) {
+    updateSetLabel();
+    captureMetrics((mode === 'explosive' ? 'EXPL' : 'SYMP') +
+      '@κ=' + nextK.toFixed(2) + ' sets=' + (1+splitLevel));
+  }
+}
+
+document.getElementById('setplus').onclick = () => addOneSet();
+document.getElementById('setminus').onclick = () => removeOneSet();
+document.getElementById('natnuc').onclick = () => {
+  naturalNucleation = !naturalNucleation;
+  document.getElementById('natv').textContent = naturalNucleation ? 'ON' : 'OFF';
+};
+
+// ----- κ sweep −3 → +3 → −3, step 0.01 -----
+let sweeping = false;
+async function runKappaSweep(kMin, kMax, step, labelBtn, doneLabel) {
+  if (sweeping) { sweeping = false; return; }
+  sweeping = true;
+  if (labelBtn) labelBtn.textContent = 'Sweep running… (click stop)';
+  const seq = [];
+  for (let k = kMin; k <= kMax + 1e-9; k = +(k + step).toFixed(4)) seq.push(k);
+  for (let k = kMax - step; k >= kMin - 1e-9; k = +(k - step).toFixed(4)) seq.push(k);
+
+  let prevK = kappaScale;
+  for (const k of seq) {
+    if (!sweeping) break;
+    maybeNaturalNucleate(prevK, k);
+    prevK = k;
+    setKappa(k, false);
+    if (typeof _traceAll === 'function') _traceAll();
+    else if (typeof traceAll === 'function') traceAll();
+    for (const key of Object.keys(COUNTS)) COUNTS[key] = 0;
+    for (const r of rays) {
+      r.reveal = 1; r.revealed = true;
+      COUNTS[r.mode]++;
+    }
+    buildIndex = rays.length;
+    for (const key of Object.keys(COUNTS)) {
+      const el = document.getElementById('c' + key);
+      if (el) el.textContent = COUNTS[key];
+    }
+    const leg = seq.indexOf(k) <= seq.length / 2 ? '↑' : '↓';
+    if (Math.abs(k * 100 - Math.round(k * 100)) < 1e-6 && (Math.round(Math.abs(k)*100) % 10 === 0))
+      captureMetrics(leg + 'κ=' + k.toFixed(2) + ' n=' + (1+splitLevel));
+    await new Promise(r => setTimeout(r, 12));
+  }
+  sweeping = false;
+  if (labelBtn) labelBtn.textContent = doneLabel;
+}
+
+document.getElementById('sweep').onclick = () => {
+  const btn = document.getElementById('sweep');
+  if (sweeping) { sweeping = false; return; }
+  runKappaSweep(-3.0, 3.0, 0.01, btn, 'κ sweep −3 → +3 → −3');
+};
+
+// 12-phase = demonstration wrapper: 12 samples of the residual cycle via κ
+document.getElementById('cycle12').onclick = async () => {
+  if (sweeping) { sweeping = false; return; }
+  const btn = document.getElementById('cycle12');
+  btn.textContent = 'Demo running…';
+  sweeping = true;
+  for (let ph = 0; ph < 12 && sweeping; ph++) {
+    breathPhase = ph;
+    const ang = ph * Math.PI / 6;
+    residualSign = Math.cos(ang) >= 0 ? 1 : -1;
+    const k = Math.cos(ang) * 2.0; // within ±2, residual cycle sample
+    maybeNaturalNucleate(kappaScale, k);
+    setKappa(k, false);
+    if (typeof _traceAll === 'function') _traceAll();
+    else if (typeof traceAll === 'function') traceAll();
+    for (const key of Object.keys(COUNTS)) COUNTS[key] = 0;
+    for (const r of rays) { r.reveal = 1; r.revealed = true; COUNTS[r.mode]++; }
+    buildIndex = rays.length;
+    for (const key of Object.keys(COUNTS)) {
+      const el = document.getElementById('c' + key);
+      if (el) el.textContent = COUNTS[key];
+    }
+    captureMetrics('φ' + ph + ' κ=' + k.toFixed(2) + ' n=' + (1+splitLevel));
+    await new Promise(r => setTimeout(r, 100));
+  }
+  sweeping = false;
+  breathPhase = 0;
+  btn.textContent = 'Demo: 12-phase (uses sweep)';
+};
+
+document.getElementById('breathe').onclick = () => {
+  breathing = !breathing;
+  document.getElementById('breathe').textContent = breathing ? 'Breathing ON' : 'Breathing OFF';
+  if (typeof traceAll === 'function') traceAll();
+};
+
+// init label after DOM
+setTimeout(updateSetLabel, 0);
+
+document.getElementById('launch').oninput = e => { launchMode = +e.target.value; traceAll(); };
+document.getElementById('nray').oninput = e => { NRAYS = +e.target.value; traceAll(); };
+document.getElementById('struct').oninput = e => { showStruct = +e.target.value === 1; };
+document.getElementById('retrace').onclick = () => traceAll();
+document.getElementById('pause').onclick = () => { paused = !paused; };
+let stepMode = false;
+let stepSize = 8;
+document.getElementById('stepsize').oninput = e => { stepSize = +e.target.value; };
+document.getElementById('reset').onclick = () => {
+  // clear all reveals, back to empty field, stay paused in step-ready state
+  buildIndex = 0;
+  for (const r of rays) { r.reveal = 0; r.revealed = false; }
+  for (const k of Object.keys(COUNTS)) COUNTS[k] = 0;
+  for (const k of Object.keys(COUNTS)) {
+    const el = document.getElementById('c' + k);
+    if (el) el.textContent = '0';
+  }
+  building = true;
+  paused = true;
+  stepMode = true;
+  document.getElementById('pause').textContent = 'Resume auto';
+};
+document.getElementById('step').onclick = () => {
+  paused = true;
+  stepMode = true;
+  document.getElementById('pause').textContent = 'Resume auto';
+  // advance: either launch more rays or grow paths
+  let budget = stepSize;
+  // first grow existing incomplete rays
+  for (let i = 0; i < buildIndex && budget > 0; i++) {
+    const r = rays[i];
+    if (r.reveal < 1) {
+      r.reveal = Math.min(1, r.reveal + Math.max(0.08, stepSize / Math.max(10, r.path.length)));
+      budget--;
+      if (r.reveal >= 1 && !r.revealed) {
+        r.revealed = true;
+        COUNTS[r.mode]++;
+        document.getElementById('c' + r.mode).textContent = COUNTS[r.mode];
+      }
+    }
+  }
+  // then launch new rays if budget left
+  while (budget > 0 && buildIndex < rays.length) {
+    const r = rays[buildIndex];
+    r.reveal = Math.min(1, 0.15);
+    buildIndex++;
+    budget--;
+  }
+};
+
+// ----- URF geometry: background IS packed sets (no empty Cartesian void) -----
+// Template tet (non-ideal four centres), unit scale
+const TET_TEMPLATE = [
+  [0.40, 0.36, 0.33],
+  [0.38, -0.34, -0.40],
+  [-0.40, 0.32, -0.36],
+  [-0.34, -0.38, 0.42]
+];
+(function () {
+  let cx = 0, cy = 0, cz = 0;
+  for (const c of TET_TEMPLATE) { cx += c[0]; cy += c[1]; cz += c[2]; }
+  cx /= 4; cy /= 4; cz /= 4;
+  for (const c of TET_TEMPLATE) { c[0] -= cx; c[1] -= cy; c[2] -= cz; }
+})();
+
+const SET_SPACING = 1.55; // centre-to-centre of neighbouring sets (residual contact)
+
+function makeSetAt(ox, oy, oz, phase) {
+  // phase slightly rotates residual orientation so packing is not sterile
+  const ca = Math.cos(phase), sa = Math.sin(phase);
+  return TET_TEMPLATE.map(c => {
+    const x = c[0]*ca - c[2]*sa;
+    const z = c[0]*sa + c[2]*ca;
+    return [x + ox, c[1] + oy, z + oz];
+  });
+}
+
+// Tetrahedral / BCC-like packing of set centroids (background of sets)
+function buildPackedBackground() {
+  const sets = [];
+  // FCC/BCC-inspired offsets for neighbour shells
+  const offsets = [
+    [0, 0, 0],
+    [1, 1, 1], [1, 1, -1], [1, -1, 1], [1, -1, -1],
+    [-1, 1, 1], [-1, 1, -1], [-1, -1, 1], [-1, -1, -1],
+    [2, 0, 0], [-2, 0, 0], [0, 2, 0], [0, -2, 0], [0, 0, 2], [0, 0, -2]
+  ];
+  const s = SET_SPACING * 0.72;
+  for (let i = 0; i < offsets.length; i++) {
+    const [a, b, c] = offsets[i];
+    const phase = i * 0.37;
+    sets.push(makeSetAt(a * s, b * s, c * s, phase));
+  }
+  return sets;
+}
+
+let PACKED = buildPackedBackground(); // background lattice of sets
+// BASE = first set (origin cell) for residual axis / manual splits
+const BASE = PACKED[0].map(c => c.slice());
+
+let SPH_R0 = 0.70;
+let SPH_R = 0.70;
+let breathing = true;
+let breathPhase = 0;
+let residualSign = 1;
+
+let SHELL_AXIS = [0, 1, 0];
+(function computeShellAxis() {
+  let ax = 0, ay = 0, az = 0, best = -1;
+  for (const c of BASE) {
+    const r2 = c[0]*c[0]+c[1]*c[1]+c[2]*c[2];
+    if (r2 > best) { best = r2; ax = c[0]; ay = c[1]; az = c[2]; }
+  }
+  let L = Math.hypot(ax, ay, az) || 1;
+  ax /= L; ay /= L; az /= L;
+  for (let it = 0; it < 12; it++) {
+    let nx = 0, ny = 0, nz = 0;
+    for (const c of BASE) {
+      const dot = c[0]*ax + c[1]*ay + c[2]*az;
+      nx += c[0]*dot; ny += c[1]*dot; nz += c[2]*dot;
+    }
+    L = Math.hypot(nx, ny, nz) || 1;
+    ax = nx/L; ay = ny/L; az = nz/L;
+  }
+  SHELL_AXIS = [ax, ay, az];
+})();
+
+// alignment: 1 = ray parallel to shell axis (transport channel), 0 = perpendicular (membrane punch)
+function axisAlignment(dx, dy, dz) {
+  const a = Math.abs(dx*SHELL_AXIS[0] + dy*SHELL_AXIS[1] + dz*SHELL_AXIS[2]);
+  return Math.max(0, Math.min(1, a));
+}
+
+function project(x, y, z) {
+  let x1 = x * Math.cos(rotY) - z * Math.sin(rotY);
+  let z1 = x * Math.sin(rotY) + z * Math.cos(rotY);
+  let y1 = y * Math.cos(rotX) - z1 * Math.sin(rotX);
+  let z2 = y * Math.sin(rotX) + z1 * Math.cos(rotX);
+  const scale = 220 * zoom;
+  const depth = 5.5 + z2;
+  const f = scale / Math.max(0.28, depth);
+  return { x: W / 2 + panX + x1 * f, y: H / 2 + panY + y1 * f, z: z2, f };
+}
+
+let BASE_SECOND = null;
+let BASE_THIRD = null;
+let splitLevel = 0; // 0, 1, or 2 extra sets
+
+function allCentres() {
+  // Background = packed sets; manual / nuclearised sets layer on top
+  let C = [];
+  for (const set of PACKED) {
+    for (const c of set) C.push(c);
+  }
+  if (splitLevel >= 1 && BASE_SECOND) C = C.concat(BASE_SECOND);
+  if (splitLevel >= 2 && BASE_THIRD) C = C.concat(BASE_THIRD);
+  if (typeof window !== 'undefined' && window._extraSets) {
+    for (const s of window._extraSets) C = C.concat(s);
+  }
+  return C;
+}
+
+function packedSetCount() {
+  return PACKED.length + splitLevel;
+}
+
+// Residual breathing — tetrahedrally symmetric (all centres), not one-sided.
+// Each centre moves radially from the set centroid: expansion/compression keeps closure.
+function breathScale() {
+  if (!breathing) return { rad: 1, radial: 1, s: 1 };
+  const amp = Math.min(0.28, 0.06 + 0.08 * Math.abs(kappaScale));
+  const s = Math.sign(kappaScale) || residualSign;
+  const radial = 1 + s * amp; // >1 expand, <1 compress — equal on every side
+  const rad = 1 + 0.03 * Math.sin(breathPhase * Math.PI / 6);
+  return { rad, radial, s, amp };
+}
+
+function deformedCentres() {
+  const C = allCentres();
+  if (!C.length) return C;
+  let cx = 0, cy = 0, cz = 0;
+  for (const c of C) { cx += c[0]; cy += c[1]; cz += c[2]; }
+  cx /= C.length; cy /= C.length; cz /= C.length;
+  const b = breathScale();
+  return C.map(c => {
+    const dx = c[0] - cx, dy = c[1] - cy, dz = c[2] - cz;
+    return [
+      cx + dx * b.radial * b.rad,
+      cy + dy * b.radial * b.rad,
+      cz + dz * b.radial * b.rad
+    ];
+  });
+}
+
+// Local membrane factor from ALL centres — closed geometry, no preferred half.
+function localMembraneFactor(px, py, pz, dx, dy, dz) {
+  const C = deformedCentres();
+  let nx = 0, ny = 0, nz = 0, wsum = 0;
+  for (const c of C) {
+    const vx = px - c[0], vy = py - c[1], vz = pz - c[2];
+    const r2 = vx*vx + vy*vy + vz*vz;
+    const w = Math.exp(-r2 * 4);
+    const r = Math.sqrt(r2) || 1;
+    nx += w * vx / r; ny += w * vy / r; nz += w * vz / r;
+    wsum += w;
+  }
+  if (wsum < 1e-6) return 0.5;
+  let L = Math.hypot(nx, ny, nz) || 1;
+  nx /= L; ny /= L; nz /= L;
+  const align = Math.abs(dx*nx + dy*ny + dz*nz);
+  return 1 - align * align;
+}
+
+function overlapCount(px, py, pz) {
+  let n = 0;
+  const R = SPH_R0 * breathScale().rad;
+  SPH_R = R;
+  for (const c of deformedCentres()) {
+    const dx = px - c[0], dy = py - c[1], dz = pz - c[2];
+    if (dx*dx + dy*dy + dz*dz <= R * R) n++;
+  }
+  return n;
+}
+
+// Shortfall: strong in membrane, enhanced near pair-midpoints (incomplete 3-fold)
+function shortfallField(px, py, pz) {
+  const n = overlapCount(px, py, pz);
+  if (n === 0) return 0;
+  // with two sets, 4-of-4 per set still near-vacuum heart; >4 is inter-set overlap (junction)
+  if (n >= 4 && n < 6) return 0.08;
+  if (n >= 6) return 0.35; // junction / interface charge region
+  if (n === 3) return 0.22;
+  let enh = 0;
+  const C = deformedCentres();
+  for (let i = 0; i < C.length; i++) {
+    for (let j = i + 1; j < C.length; j++) {
+      const mx = (C[i][0] + C[j][0]) / 2;
+      const my = (C[i][1] + C[j][1]) / 2;
+      const mz = (C[i][2] + C[j][2]) / 2;
+      const d2 = (px - mx) ** 2 + (py - my) ** 2 + (pz - mz) ** 2;
+      enh += Math.exp(-d2 * 10);
+    }
+  }
+  const base = n === 2 ? 0.75 : 1.05;
+  return Math.min(1.8, base + 0.55 * enh);
+}
+
+function shortfallGradient(px, py, pz) {
+  const h = 0.035;
+  const s0 = shortfallField(px, py, pz);
+  return [
+    (shortfallField(px + h, py, pz) - s0) / h,
+    (shortfallField(px, py + h, pz) - s0) / h,
+    (shortfallField(px, py, pz + h) - s0) / h
+  ];
+}
+
+function fibonacciSphere(n) {
+  const pts = [];
+  const phi = Math.PI * (3 - Math.sqrt(5));
+  for (let i = 0; i < n; i++) {
+    const y = 1 - (i / Math.max(1, n - 1)) * 2;
+    const r = Math.sqrt(Math.max(0, 1 - y * y));
+    const th = phi * i;
+    pts.push([Math.cos(th) * r, y, Math.sin(th) * r]);
+  }
+  return pts;
+}
+
+function classifyRay(path, intensity, totalTurn, maxSf, memFrac, meanAlign) {
+  const avgTurn = totalTurn / Math.max(1, path.length - 2);
+  const align = meanAlign == null ? 0.5 : meanAlign;
+  // Geometry-led classification — no hand-imposed high-κ dump into Kinetic.
+  // Transport-aligned paths (high align) stay Kinetic if they don't fold.
+  if (maxSf > 0.85 && avgTurn > 0.07 && intensity > 0.25) return 'CAUSTIC';
+  if (avgTurn > 0.055 && memFrac > 0.18 && intensity > 0.2) return 'PRISMATIC';
+  // Cryptic: membrane-heavy, low turn, often misaligned (diffusive)
+  if (memFrac > 0.35 && avgTurn < 0.04 && align < 0.55) return 'CRYPTIC';
+  // Scotopic: long membrane, moderate drain
+  if (memFrac > 0.4 && intensity < 0.5 && avgTurn < 0.1) return 'SCOTOPIC';
+  // Kinetic: residual living motion, including open transport corridors
+  return 'KINETIC';
+}
+
+function integrateRay(origin, dir) {
+  const path = [];
+  let x = origin[0], y = origin[1], z = origin[2];
+  let dx = dir[0], dy = dir[1], dz = dir[2];
+  let L = Math.hypot(dx, dy, dz) || 1;
+  dx /= L; dy /= L; dz /= L;
+  let intensity = 1.0;
+  const step = 0.032;
+  const maxSteps = 100;
+  let totalTurn = 0, maxSf = 0, memSteps = 0, alignSum = 0;
+  let pdx = dx, pdy = dy, pdz = dz;
+
+  for (let s = 0; s < maxSteps; s++) {
+    const n = overlapCount(x, y, z);
+    const sf = shortfallField(x, y, z);
+    maxSf = Math.max(maxSf, sf);
+    if (n >= 1 && n <= 2) memSteps++;
+    const membraneFactor = localMembraneFactor(x, y, z, dx, dy, dz);
+    const align = 1 - membraneFactor;
+    alignSum += align;
+    path.push({ x, y, z, n, sf, align });
+
+    if (n >= 1) {
+      const g = shortfallGradient(x, y, z);
+      const k = 0.045 * kappaScale * (0.3 + sf) * membraneFactor;
+      dx += g[0] * k;
+      dy += g[1] * k;
+      dz += g[2] * k;
+      L = Math.hypot(dx, dy, dz) || 1;
+      dx /= L; dy /= L; dz /= L;
+      if (n <= 2) {
+        const loss = 0.018 * sf * membraneFactor * Math.min(2, 0.5 + Math.abs(kappaScale) * 0.5);
+        intensity *= (1 - loss);
+      }
+    }
+
+    if (s > 0) {
+      const dot = Math.max(-1, Math.min(1, dx * pdx + dy * pdy + dz * pdz));
+      totalTurn += Math.acos(dot);
+    }
+    pdx = dx; pdy = dy; pdz = dz;
+
+    x += dx * step;
+    y += dy * step;
+    z += dz * step;
+    if (Math.hypot(x, y, z) > 6.5) break;
+    if (intensity < 0.015) break;
+  }
+
+  const memFrac = memSteps / Math.max(1, path.length);
+  const meanAlign = alignSum / Math.max(1, path.length);
+  const mode = classifyRay(path, intensity, totalTurn, maxSf, memFrac, meanAlign);
+  return { path, intensity, mode, maxSf, memFrac, totalTurn, meanAlign };
+}
+
+let rays = [];
+const COUNTS = { CAUSTIC: 0, PRISMATIC: 0, KINETIC: 0, SCOTOPIC: 0, CRYPTIC: 0 };
+
+function traceAll() {
+  rays = [];
+  for (const k of Object.keys(COUNTS)) COUNTS[k] = 0;
+  const dirs = fibonacciSphere(NRAYS);
+
+  for (let i = 0; i < NRAYS; i++) {
+    let origin, dir;
+    if (typeof emitMode !== 'undefined' && emitMode) {
+      // Full 3D isotropic emission from every centroidal focus + outer shells
+      const C = deformedCentres();
+      // Build list of foci: per-set centroids + global heart + each nucleus centre + edge midpoints
+      const foci = [];
+      // partition centres into sets of 4 when possible
+      for (let s = 0; s + 3 < C.length; s += 4) {
+        let sx=0,sy=0,sz=0;
+        for (let t = 0; t < 4; t++) {
+          sx += C[s+t][0]; sy += C[s+t][1]; sz += C[s+t][2];
+        }
+        foci.push([sx/4, sy/4, sz/4]); // set centroid — 360° emit
+      }
+      if (!foci.length) foci.push([0,0,0]);
+      // each nucleus centre is also a residual focus (outer extreme included)
+      for (const c of C) foci.push(c);
+      // edge midpoints (shortfall loci)
+      for (let a = 0; a < C.length; a++)
+        for (let b = a+1; b < Math.min(C.length, a+4); b++)
+          foci.push([
+            (C[a][0]+C[b][0])/2,
+            (C[a][1]+C[b][1])/2,
+            (C[a][2]+C[b][2])/2
+          ]);
+      // outer shell samples on the extreme radius of the whole assembly
+      let rMax = 0;
+      for (const c of C) rMax = Math.max(rMax, Math.hypot(c[0],c[1],c[2]));
+      const Rshell = (rMax + SPH_R0 * breathScale().rad) * 0.98;
+      foci.push(dirs[i].map(v => v * Rshell)); // outer extreme shell point
+
+      // Pick focus; direction is ALWAYS full-sphere isotropic (dirs from fibonacci)
+      const focus = foci[i % foci.length];
+      origin = focus;
+      dir = dirs[i]; // 360° in 3D — no outward-only bias
+    } else if (launchMode === 0) {
+      origin = [0, 0, 0];
+      dir = dirs[i];
+    } else if (launchMode === 1) {
+      origin = dirs[i].map(v => v * 2.7);
+      dir = dirs[i].map(v => -v);
+    } else {
+      if (i % 2 === 0) { origin = [0, 0, 0]; dir = dirs[i]; }
+      else { origin = dirs[i].map(v => v * 2.7); dir = dirs[i].map(v => -v); }
+    }
+    const ray = integrateRay(origin, dir);
+    rays.push(ray);
+    COUNTS[ray.mode]++;
+  }
+
+  document.getElementById('nrays').textContent = NRAYS;
+  for (const k of Object.keys(COUNTS)) {
+    document.getElementById('c' + k).textContent = COUNTS[k];
+  }
+}
+
+const MODE_RGB = {
+  // inverted visibility: rare modes brightest
+  CRYPTIC: [255, 255, 255],
+  CAUSTIC: [255, 200, 74],
+  PRISMATIC: [200, 130, 255],
+  KINETIC: [48, 140, 96],
+  SCOTOPIC: [48, 78, 100]
+};
+
+function drawStructure() {
+  if (!showStruct) return;
+  const centres = deformedCentres();
+  // Full edge network — closure on every side (no missing half)
+  ctx.strokeStyle = 'rgba(120,150,200,0.22)';
+  ctx.lineWidth = 1;
+  for (let i = 0; i < centres.length; i++) {
+    for (let j = i + 1; j < centres.length; j++) {
+      const a = project(centres[i][0], centres[i][1], centres[i][2]);
+      const b = project(centres[j][0], centres[j][1], centres[j][2]);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.stroke();
+    }
+  }
+  // Edge midpoints = emission / shortfall loci
+  for (let i = 0; i < centres.length; i++) {
+    for (let j = i + 1; j < centres.length; j++) {
+      const mx = (centres[i][0]+centres[j][0])/2;
+      const my = (centres[i][1]+centres[j][1])/2;
+      const mz = (centres[i][2]+centres[j][2])/2;
+      const p = project(mx, my, mz);
+      ctx.fillStyle = 'rgba(255,220,140,0.55)';
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 2.2 * zoom, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+  for (const c of centres) {
+    const p = project(c[0], c[1], c[2]);
+    const rad = SPH_R * p.f * 0.9;
+    const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, rad);
+    g.addColorStop(0, 'rgba(90,130,190,0.16)');
+    g.addColorStop(0.65, 'rgba(60,90,140,0.06)');
+    g.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, rad, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(150,180,220,0.35)';
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, rad * 0.9, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  // centroid
+  const o = project(0, 0, 0);
+  const cg = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, 12 * zoom);
+  cg.addColorStop(0, 'rgba(255,255,255,0.95)');
+  cg.addColorStop(0.4, 'rgba(180,210,255,0.35)');
+  cg.addColorStop(1, 'rgba(100,140,255,0)');
+  ctx.fillStyle = cg;
+  ctx.beginPath();
+  ctx.arc(o.x, o.y, 12 * zoom, 0, Math.PI * 2);
+  ctx.fill();
+  // all radial transport corridors (centre → each nucleus) — closed set, not one axis
+  ctx.strokeStyle = 'rgba(255,255,255,0.14)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 4]);
+  for (const c of centres) {
+    const p = project(c[0], c[1], c[2]);
+    ctx.beginPath();
+    ctx.moveTo(o.x, o.y);
+    ctx.lineTo(p.x, p.y);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+}
+
+function drawRays() {
+  const indexed = rays.map((r, i) => {
+    let z = 0;
+    for (const p of r.path) z += project(p.x, p.y, p.z).z;
+    return { r, i, z: z / Math.max(1, r.path.length) };
+  });
+  indexed.sort((a, b) => a.z - b.z);
+
+  for (const { r, i } of indexed) {
+    if (r.path.length < 2) continue;
+    const rgb = MODE_RGB[r.mode];
+    const a = 0.12 + 0.65 * r.intensity;
+
+    // PRISMATIC: split into 3 offset colour strands
+    if (r.mode === 'PRISMATIC') {
+      const cols = [
+        [255, 110, 110],
+        [110, 255, 140],
+        [110, 150, 255]
+      ];
+      for (let c = 0; c < 3; c++) {
+        ctx.beginPath();
+        for (let k = 0; k < r.path.length; k++) {
+          const pt = r.path[k];
+          const off = (c - 1) * 0.025 * (1 + pt.sf);
+          const p = project(pt.x + off, pt.y, pt.z + off * 0.7);
+          if (k === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        }
+        ctx.strokeStyle = `rgba(${cols[c][0]},${cols[c][1]},${cols[c][2]},${a * 0.85})`;
+        ctx.lineWidth = 1.1;
+        ctx.stroke();
+      }
+      continue;
+    }
+
+    ctx.beginPath();
+    for (let k = 0; k < r.path.length; k++) {
+      const p = project(r.path[k].x, r.path[k].y, r.path[k].z);
+      if (k === 0) ctx.moveTo(p.x, p.y);
+      else ctx.lineTo(p.x, p.y);
+    }
+    ctx.strokeStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+    ctx.lineWidth = r.mode === 'CRYPTIC' ? 2.2 : r.mode === 'CAUSTIC' ? 1.9 : r.mode === 'SCOTOPIC' ? 0.7 : 1.0;
+    ctx.stroke();
+
+    // CAUSTIC endpoint bloom
+    if (r.mode === 'CAUSTIC') {
+      const last = r.path[r.path.length - 1];
+      const p = project(last.x, last.y, last.z);
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 14);
+      g.addColorStop(0, `rgba(255,230,140,${0.7 * r.intensity})`);
+      g.addColorStop(0.4, `rgba(255,180,60,${0.3 * r.intensity})`);
+      g.addColorStop(1, 'rgba(255,140,30,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+// Aggregate caustic density
+function drawCausticCloud() {
+  const acc = new Map();
+  for (const r of rays) {
+    if (r.mode !== 'CAUSTIC') continue;
+    for (let k = Math.floor(r.path.length * 0.55); k < r.path.length; k++) {
+      const pt = r.path[k];
+      if (pt.sf < 0.75) continue;
+      const p = project(pt.x, pt.y, pt.z);
+      const key = Math.round(p.x / 5) * 5 + ',' + Math.round(p.y / 5) * 5;
+      acc.set(key, (acc.get(key) || 0) + 1);
+    }
+  }
+  for (const [key, cnt] of acc) {
+    if (cnt < 2) continue;
+    const [xs, ys] = key.split(',').map(Number);
+    const a = Math.min(0.4, 0.05 * cnt);
+    const g = ctx.createRadialGradient(xs, ys, 0, xs, ys, 8 + cnt * 1.5);
+    g.addColorStop(0, `rgba(255,210,100,${a})`);
+    g.addColorStop(1, 'rgba(255,150,40,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(xs, ys, 8 + cnt * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+// Progressive build state
+let buildIndex = 0;       // how many rays have been launched
+let pathReveal = 0;       // global path-step reveal (0..1) after all launched
+let building = true;
+const LAUNCH_PER_FRAME = 6;   // rays to start per frame
+const PATH_SPEED = 0.8;       // path steps revealed per frame (average)
+
+function resetBuild() {
+  buildIndex = 0;
+  pathReveal = 0;
+  building = true;
+  for (const k of Object.keys(COUNTS)) COUNTS[k] = 0;
+  for (const k of Object.keys(COUNTS)) {
+    const el = document.getElementById('c' + k);
+    if (el) el.textContent = '0';
+  }
+}
+
+// Override retrace to also reset build
+const _traceAll = traceAll;
+traceAll = function() {
+  _traceAll();
+  // clear counts until revealed
+  for (const k of Object.keys(COUNTS)) COUNTS[k] = 0;
+  for (const r of rays) r.revealed = false;
+  resetBuild();
+};
+
+document.getElementById('retrace').onclick = () => { _traceAll(); for (const r of rays) r.revealed = false; resetBuild(); };
+
+function drawRaysProgressive() {
+  const nShow = Math.min(buildIndex, rays.length);
+  const indexed = [];
+  for (let i = 0; i < nShow; i++) {
+    const r = rays[i];
+    let z = 0;
+    const steps = Math.max(2, Math.floor(r.path.length * Math.min(1, r.reveal || 0)));
+    for (let k = 0; k < steps; k++) z += project(r.path[k].x, r.path[k].y, r.path[k].z).z;
+    indexed.push({ r, i, z: z / steps, steps });
+  }
+  indexed.sort((a, b) => a.z - b.z);
+
+  for (const { r, i, steps } of indexed) {
+    if (steps < 2) continue;
+    const rgb = MODE_RGB[r.mode];
+    let a = 0.14 + 0.62 * r.intensity;
+    if (r.mode === 'CRYPTIC') a = Math.min(1, 0.45 + 0.55 * r.intensity);
+    if (r.mode === 'CAUSTIC') a = Math.min(1, 0.28 + 0.65 * r.intensity);
+    if (r.mode === 'KINETIC' || r.mode === 'SCOTOPIC') a *= 0.75;
+    const frac = steps / r.path.length;
+
+    if (r.mode === 'PRISMATIC') {
+      const cols = [[255,110,110],[110,255,140],[110,150,255]];
+      for (let c = 0; c < 3; c++) {
+        ctx.beginPath();
+        for (let k = 0; k < steps; k++) {
+          const pt = r.path[k];
+          const off = (c - 1) * 0.025 * (1 + pt.sf);
+          const p = project(pt.x + off, pt.y, pt.z + off * 0.7);
+          if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+        }
+        ctx.strokeStyle = `rgba(${cols[c][0]},${cols[c][1]},${cols[c][2]},${a * 0.85})`;
+        ctx.lineWidth = 1.1;
+        ctx.stroke();
+      }
+    } else {
+      ctx.beginPath();
+      for (let k = 0; k < steps; k++) {
+        const p = project(r.path[k].x, r.path[k].y, r.path[k].z);
+        if (k === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      }
+      ctx.strokeStyle = `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${a})`;
+      ctx.lineWidth = r.mode === 'CRYPTIC' ? 2.2 : r.mode === 'CAUSTIC' ? 1.9 : r.mode === 'SCOTOPIC' ? 0.7 : 1.0;
+      ctx.stroke();
+    }
+
+    // head glow at growing tip
+    const tip = r.path[steps - 1];
+    const tp = project(tip.x, tip.y, tip.z);
+    const hr = r.mode === 'CAUSTIC' ? 7 : 4;
+    const hg = ctx.createRadialGradient(tp.x, tp.y, 0, tp.x, tp.y, hr + 4);
+    hg.addColorStop(0, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},${0.55 * r.intensity})`);
+    hg.addColorStop(1, `rgba(${rgb[0]},${rgb[1]},${rgb[2]},0)`);
+    ctx.fillStyle = hg;
+    ctx.beginPath();
+    ctx.arc(tp.x, tp.y, hr + 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // caustic bloom only when fully revealed
+    if (r.mode === 'CAUSTIC' && frac > 0.92) {
+      const last = r.path[r.path.length - 1];
+      const p = project(last.x, last.y, last.z);
+      const g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 14);
+      g.addColorStop(0, `rgba(255,230,140,${0.65 * r.intensity})`);
+      g.addColorStop(0.4, `rgba(255,180,60,${0.28 * r.intensity})`);
+      g.addColorStop(1, 'rgba(255,140,30,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, 14, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
+function drawCausticCloudProgressive() {
+  const acc = new Map();
+  const nShow = Math.min(buildIndex, rays.length);
+  for (let i = 0; i < nShow; i++) {
+    const r = rays[i];
+    if (r.mode !== 'CAUSTIC') continue;
+    const steps = Math.floor(r.path.length * Math.min(1, r.reveal || 0));
+    if (steps < r.path.length * 0.55) continue;
+    for (let k = Math.floor(r.path.length * 0.55); k < steps; k++) {
+      const pt = r.path[k];
+      if (pt.sf < 0.75) continue;
+      const p = project(pt.x, pt.y, pt.z);
+      const key = Math.round(p.x / 5) * 5 + ',' + Math.round(p.y / 5) * 5;
+      acc.set(key, (acc.get(key) || 0) + 1);
+    }
+  }
+  for (const [key, cnt] of acc) {
+    if (cnt < 2) continue;
+    const [xs, ys] = key.split(',').map(Number);
+    const a = Math.min(0.4, 0.05 * cnt);
+    const g = ctx.createRadialGradient(xs, ys, 0, xs, ys, 8 + cnt * 1.5);
+    g.addColorStop(0, `rgba(255,210,100,${a})`);
+    g.addColorStop(1, 'rgba(255,150,40,0)');
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.arc(xs, ys, 8 + cnt * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+_traceAll();
+for (const r of rays) { r.reveal = 0; r.revealed = false; }
+resetBuild();
+
+function frame() {
+  // always redraw when paused (so step is visible)
+  const doSim = !paused;
+  if (doSim) {
+    stepMode = false;
+    document.getElementById('pause').textContent = 'Pause / Resume';
+    // Launch new rays gradually
+    if (buildIndex < rays.length) {
+      const n = Math.min(LAUNCH_PER_FRAME, rays.length - buildIndex);
+      for (let k = 0; k < n; k++) {
+        const r = rays[buildIndex];
+        r.reveal = 0;
+        buildIndex++;
+      }
+    }
+    // Grow each launched ray's path
+    let allDone = buildIndex >= rays.length;
+    for (let i = 0; i < buildIndex; i++) {
+      const r = rays[i];
+      if (r.reveal < 1) {
+        r.reveal = Math.min(1, r.reveal + PATH_SPEED / Math.max(8, r.path.length));
+        allDone = false;
+        // count mode once when first fully revealed
+        if (r.reveal >= 1 && !r.revealed) {
+          r.revealed = true;
+          COUNTS[r.mode]++;
+          document.getElementById('c' + r.mode).textContent = COUNTS[r.mode];
+        }
+      }
+    }
+    building = !allDone;
+  }
+
+  // redraw every frame (live while auto, and after each step)
+  ctx.fillStyle = '#04040a';
+  ctx.fillRect(0, 0, W, H);
+  const bg = ctx.createRadialGradient(W / 2, H / 2, 0, W / 2, H / 2, Math.max(W, H) * 0.5);
+  bg.addColorStop(0, 'rgba(14,16,32,0.5)');
+  bg.addColorStop(1, 'rgba(4,4,10,0)');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
+
+  drawStructure();
+  drawCausticCloudProgressive();
+  drawRaysProgressive();
+
+  const prog = rays.length ? (buildIndex / rays.length) * 0.4 +
+    (rays.slice(0, Math.max(1, buildIndex)).reduce((s, r) => s + (r.reveal || 0), 0) / Math.max(1, buildIndex)) * 0.6
+    : 0;
+  ctx.fillStyle = 'rgba(40,50,80,0.8)';
+  ctx.fillRect(W * 0.25, 12, W * 0.5, 4);
+  ctx.fillStyle = building ? 'rgba(120,170,255,0.9)' : 'rgba(80,200,140,0.9)';
+  ctx.fillRect(W * 0.25, 12, W * 0.5 * Math.min(1, prog), 4);
+
+  ctx.font = '11px system-ui';
+  ctx.fillStyle = '#4a5568';
+  let status = building ? (paused ? 'Paused — Step → to advance' : 'Building ray field…') : 'Field complete';
+  ctx.fillText(status, 12, H - 32);
+  ctx.fillText('Gold=caustic  Purple=prismatic  Green=kinetic  Blue-grey=scotopic  Grey=cryptic', 12, H - 16);
+
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>
