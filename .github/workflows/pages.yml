@@ -27,7 +27,6 @@ jobs:
         run: |
           mkdir -p _site
 
-          # Landing page with both sims
           cat > _site/index.html << 'EOF'
           <!DOCTYPE html>
           <html lang="en">
@@ -36,7 +35,7 @@ jobs:
             <meta name="viewport" content="width=device-width, initial-scale=1" />
             <title>Unified Relational Framework</title>
             <style>
-              :root { --bg:#05070a; --ink:#eef1f6; --muted:#5c6675; --amber:#eab054; --teal:#3f93ab; --line:#1a2029; }
+              :root { --bg:#05070a; --ink:#eef1f6; --muted:#5c6675; --amber:#eab054; --teal:#3f93ab; --violet:#a586d6; }
               * { box-sizing: border-box; }
               body { margin:0; min-height:100vh; background:var(--bg); color:var(--ink);
                      font-family: system-ui, -apple-system, Segoe UI, sans-serif;
@@ -49,8 +48,10 @@ jobs:
               a.btn { display:inline-block; padding:0.75rem 1.35rem; border:1px solid var(--amber);
                       color:var(--amber); text-decoration:none; border-radius:999px; font-size:0.95rem; }
               a.btn.secondary { border-color:var(--teal); color:var(--teal); }
+              a.btn.tertiary { border-color:var(--violet); color:var(--violet); }
               a.btn:hover { background:rgba(234,176,84,0.12); }
               a.btn.secondary:hover { background:rgba(63,147,171,0.12); }
+              a.btn.tertiary:hover { background:rgba(165,134,214,0.12); }
               .meta { margin-top:2rem; font-size:0.8rem; color:var(--muted); }
               .meta a { color:var(--ink); }
             </style>
@@ -60,7 +61,8 @@ jobs:
             <p>Geometric derivation from the Reuleaux triangle — residual stress, pressure length, optical modes, and the cyclic shortfall.</p>
             <div class="btns">
               <a class="btn" href="URF_The_Instrument.html">The Instrument</a>
-              <a class="btn secondary" href="URF_raytrace_shortfall.html">Ray Trace</a>
+              <a class="btn secondary" href="URF_raytrace_shortfall.html">Ray Trace (Canvas)</a>
+              <a class="btn tertiary" href="URF_raytrace_webgl.html">Ray March (WebGL)</a>
             </div>
             <div class="meta">
               Source: <a href="https://github.com/Zhenzheni/unified-relational-framework">Zhenzheni/unified-relational-framework</a>
@@ -69,17 +71,24 @@ jobs:
           </html>
           EOF
 
-          # Instrument (modular)
           cp sims/URF_The_Instrument.html _site/ 2>/dev/null || true
           cp sims/instrument.css _site/ 2>/dev/null || true
           cp sims/instrument.js _site/ 2>/dev/null || true
 
-          # Raytrace — prefer single-file; also modular parts if present
           cp sims/URF_raytrace_shortfall.html _site/ 2>/dev/null || true
           cp sims/raytrace.css _site/ 2>/dev/null || true
           cp sims/raytrace.part1.js _site/ 2>/dev/null || true
           cp sims/raytrace.part2.js _site/ 2>/dev/null || true
           cp sims/raytrace.js _site/ 2>/dev/null || true
+
+          # WebGL SDF ray march (single-file preferred)
+          cp sims/URF_raytrace_webgl.html _site/ 2>/dev/null || true
+          cp sims/webgl_loader.js _site/ 2>/dev/null || true
+          cp sims/webgl_raymarch.js _site/ 2>/dev/null || true
+          cp sims/webgl_raymarch.part1.js _site/ 2>/dev/null || true
+          cp sims/webgl_raymarch.part2.js _site/ 2>/dev/null || true
+          mkdir -p _site/webgl_b64
+          cp sims/webgl_b64/*.b64 _site/webgl_b64/ 2>/dev/null || true
 
           echo "=== _site ==="
           ls -la _site
